@@ -5,7 +5,7 @@
 -define(APP, nkswarm).
 
 start(_, _) ->
-    {ok, _} = ensure_contact(),
+    ensure_contact(),
     nkswarm_sup:start_link().
 
 stop(_) ->
@@ -18,7 +18,6 @@ ensure_contact() ->
         Nodes -> 
             ensure_contact(Nodes)
     end.
-
 
 ensure_contact(Nodes) ->
     Answering = [N || N <- Nodes, net_adm:ping(N) =:= pong],
