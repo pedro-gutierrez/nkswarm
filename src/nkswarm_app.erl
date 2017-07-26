@@ -25,8 +25,8 @@ ensure_contact(Nodes) ->
     case Answering of
         [] -> {error, no_contact_nodes_reachable};
         _ -> 
-            DefaultTime = 6000,
-            WaitTime = get_env(?APP, contact_timeout, DefaultTime),
+            DefaultTime = 10000,
+            WaitTime = get_env(?APP, timeout, DefaultTime),
             wait_for_nodes(length(Answering), WaitTime)
     end.
 
