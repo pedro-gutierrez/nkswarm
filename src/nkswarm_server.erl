@@ -27,15 +27,6 @@ handle_call(contact, _, Data) ->
     Data2 = contact(Data),
     {reply, to_map(Data2), Data2}.
 
-
-to_map(#data{status=Status, replied=Replied, contacted=Contacted, nodes=Nodes, last_checked=Checked}) ->
-    #{ status => Status, 
-       replied => Replied,
-       contacted => Contacted, 
-       nodes => Nodes, 
-       last_checked => Checked }.
-
-
 handle_cast(_, Data) ->
   {noreply, Data}.
 
@@ -105,3 +96,10 @@ get_env(AppName, Key, Default) ->
 
 millis() ->
     erlang:system_time(millisecond).
+
+to_map(#data{status=Status, replied=Replied, contacted=Contacted, nodes=Nodes, last_checked=Checked}) ->
+    #{ status => Status, 
+       replied => Replied,
+       contacted => Contacted, 
+       nodes => Nodes, 
+       last_checked => Checked }.
