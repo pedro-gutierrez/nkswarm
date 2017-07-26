@@ -1,0 +1,16 @@
+{application, nkswarm,
+ [{description, "Simple Erlang cluster and Prometheus metrics"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib,
+    inets,
+    prometheus
+   ]},
+  {env,[]},
+  {modules, []},
+  {mod, {nkswarm_app, []}},
+  {maintainers, ["Pedro Gutierrez"]},
+  {licenses, ["MIT"]}
+ ]}.
