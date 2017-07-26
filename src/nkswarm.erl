@@ -1,10 +1,6 @@
 -module(nkswarm).
--export([status/0, contact/0]).
+-export([status/0]).
 
 status() ->
-    gen_server:call(nkswarm_server, status).
-
-contact() ->
-    gen_server:call(nkswarm_server, contact).
-
-
+    Timeout = nkswarm_config:timeout(),
+    gen_server:call(nkswarm_server, status, Timeout+2500).

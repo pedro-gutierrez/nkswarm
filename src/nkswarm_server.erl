@@ -8,7 +8,6 @@
          terminate/2,
          code_change/3]).
 -record(data, {status, replied, contacted, nodes, last_checked}).
--define(APP, nkswarm).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -21,9 +20,6 @@ handle_info(timeout, Data) ->
     {noreply, Data2}.
 
 handle_call(status, _, Data) ->
-  {reply, to_map(Data), Data};
-
-handle_call(contact, _, Data) ->
     Data2 = contact(Data),
     {reply, to_map(Data2), Data2}.
 
@@ -37,7 +33,7 @@ code_change(_OldVsn, Data, _Extra) ->
   {ok, Data}.
 
 contact(Data) ->
-    case get_env(?APP, contact, []) of
+    case nkswarm_config:contact() of
         [] -> 
             Data#data{status=disabled, 
                       replied=[], 
@@ -45,10 +41,11 @@ contact(Data) ->
                       nodes=nodes(),
                       last_checked=millis()};
         Nodes -> 
-            contact(Nodes, Data)
+            Timeout = nkswarm_config:timeout(),
+            contact([N || N <- Nodes, N =/= node()], Timeout, Data)
     end.
 
-contact(Nodes, Data) ->
+contact(Nodes, Timeout, Data) ->
     Answering = [N || N <- Nodes, net_adm:ping(N) =:= pong],
     case Answering of
         [] -> 
@@ -58,9 +55,7 @@ contact(Nodes, Data) ->
                       nodes=nodes(),
                       last_checked=millis()};
         _ -> 
-            DefaultTime = 10000,
-            WaitTime = get_env(?APP, timeout, DefaultTime),
-            wait_for_nodes(Answering, Nodes, WaitTime, Data)
+            wait_for_nodes(Answering, Nodes, Timeout, Data)
     end.
 
 wait_for_nodes(Answering, Nodes, WaitTime, Data) ->
@@ -88,11 +83,6 @@ wait_for_nodes(Answering, Nodes, SliceTime, Iterations, Data) ->
             wait_for_nodes(Answering, Nodes, SliceTime, Iterations - 1, Data)
     end.
 
-get_env(AppName, Key, Default) ->
-    case application:get_env(AppName, Key) of
-        undefined   -> Default;
-        {ok, Value} -> Value
-    end.
 
 millis() ->
     erlang:system_time(millisecond).
