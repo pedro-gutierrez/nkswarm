@@ -71,7 +71,7 @@ wait_for_nodes(Answering, Nodes, _SliceTime, 0, Data) ->
               last_checked=millis()};
 
 wait_for_nodes(Answering, Nodes, SliceTime, Iterations, Data) -> 
-    case length(nodes()) > length(Answering) of
+    case length(nodes()) >= length(Answering) of
         true -> 
             Data#data{status=ok, 
                       replied=Answering, 
