@@ -8,10 +8,18 @@ status() ->
 metrics(specs) ->
     [#{ type => gauge, 
         name => erlang_cluster_size, 
-        help => "The size of the erlang cluster" }];
+        help => "The size of the erlang cluster" }, 
+     #{ type => gauge,
+        name => erlang_cluster_health_status,
+        labels => [color],
+        help => "The health of the erlang cluster status (red, yellow, green)"}];
 
 metrics(values) ->
-    #{ nodes := Nodes } = status(),
+    #{ nodes := Nodes, status := Color } = status(),
     [#{ type => gauge, 
         name => erlang_cluster_size, 
-        value =>  length(Nodes) }].
+        value =>  length(Nodes) }, 
+     #{ type => gauge,
+        name => erlang_cluster_health_status,
+        labels => [Color],
+        value => 1}].
