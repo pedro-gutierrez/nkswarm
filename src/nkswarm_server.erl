@@ -35,7 +35,7 @@ code_change(_OldVsn, Data, _Extra) ->
 contact(Data) ->
     case nkswarm_config:contact() of
         [] -> 
-            Data#data{status=disabled, 
+            Data#data{status=green, 
                       replied=[], 
                       contacted=[], 
                       nodes=all_nodes(),
@@ -49,7 +49,7 @@ contact(Nodes, Timeout, Data) ->
     Answering = [N || N <- Nodes, net_adm:ping(N) =:= pong],
     case Answering of
         [] -> 
-            Data#data{status=no_nodes, 
+            Data#data{status=red, 
                       replied=Answering, 
                       contacted=Nodes, 
                       nodes=all_nodes(),
@@ -64,7 +64,7 @@ wait_for_nodes(Answering, Nodes, WaitTime, Data) ->
     wait_for_nodes(Answering, Nodes, SliceTime, Slices, Data).
 
 wait_for_nodes(Answering, Nodes, _SliceTime, 0, Data) ->
-    Data#data{status=first_node, 
+    Data#data{status=yellow, 
               replied=Answering, 
               contacted=Nodes,
               nodes=all_nodes(),
@@ -73,7 +73,7 @@ wait_for_nodes(Answering, Nodes, _SliceTime, 0, Data) ->
 wait_for_nodes(Answering, Nodes, SliceTime, Iterations, Data) -> 
     case length(nodes()) >= length(Answering) of
         true -> 
-            Data#data{status=ok, 
+            Data#data{status=green, 
                       replied=Answering, 
                       contacted=Nodes, 
                       nodes=all_nodes(),
