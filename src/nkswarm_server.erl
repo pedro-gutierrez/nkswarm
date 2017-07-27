@@ -38,7 +38,7 @@ contact(Data) ->
             Data#data{status=disabled, 
                       replied=[], 
                       contacted=[], 
-                      nodes=nodes(),
+                      nodes=all_nodes(),
                       last_checked=millis()};
         Nodes -> 
             Timeout = nkswarm_config:timeout(),
@@ -52,7 +52,7 @@ contact(Nodes, Timeout, Data) ->
             Data#data{status=no_nodes, 
                       replied=Answering, 
                       contacted=Nodes, 
-                      nodes=nodes(),
+                      nodes=all_nodes(),
                       last_checked=millis()};
         _ -> 
             wait_for_nodes(Answering, Nodes, Timeout, Data)
@@ -67,7 +67,7 @@ wait_for_nodes(Answering, Nodes, _SliceTime, 0, Data) ->
     Data#data{status=first_node, 
               replied=Answering, 
               contacted=Nodes,
-              nodes=nodes(),
+              nodes=all_nodes(),
               last_checked=millis()};
 
 wait_for_nodes(Answering, Nodes, SliceTime, Iterations, Data) -> 
@@ -76,13 +76,15 @@ wait_for_nodes(Answering, Nodes, SliceTime, Iterations, Data) ->
             Data#data{status=ok, 
                       replied=Answering, 
                       contacted=Nodes, 
-                      nodes=nodes(),
+                      nodes=all_nodes(),
                       last_checked=millis()};
         false ->
             timer:sleep(SliceTime),
             wait_for_nodes(Answering, Nodes, SliceTime, Iterations - 1, Data)
     end.
 
+
+all_nodes() -> [node()|nodes()].
 
 millis() ->
     erlang:system_time(millisecond).
