@@ -46,7 +46,10 @@ active(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
             end;
         _ -> 
             {next_state, active, Data}
-    end.
+    end;
+
+active({call, From}, status, Data) ->
+    {keep_state, Data, {reply, From, status()}}.
 
 passive(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
     case decode(Msg) of
@@ -62,7 +65,10 @@ passive(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
             end;
         _ -> 
             {next_state, active, Data}
-    end.
+    end;
+
+passive({call, From}, status, Data) ->
+    {keep_state, Data, {reply, From, status()}}.
 
 terminate(Reason, _, #data{beacon=B}) ->
     log({terminated, Reason}),
@@ -77,3 +83,6 @@ decode(Bin) ->
 
 log(Term) ->
     io:format("[nkswarm] ~p~n", [Term]).
+
+status() ->
+    #{ nodes => nodes() }.
