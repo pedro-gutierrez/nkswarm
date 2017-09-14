@@ -1,97 +1,79 @@
 -module(nkswarm_server).
--behavior(gen_server).
+-behavior(gen_statem).
 -export([start_link/0]).
--export([init/1,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2,
-         terminate/2,
-         code_change/3]).
--record(data, {status, replied, contacted, nodes, last_checked}).
+-export([init/1, callback_mode/0, terminate/3]).
+-export([active/3, passive/3]).
+-record(data, {beacon, cluster}).
+-define(APP, nkswarm).
+
+callback_mode() ->
+    state_functions.
 
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    gen_statem:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+config() -> 
+    { application:get_env(?APP, port, 9999),
+      application:get_env(?APP, cluster, nkswarm),
+      application:get_env(?APP, timeout, 1000),
+      application:get_env(?APP, interval, 300)}.
 
 init([]) ->
-    {ok, #data{status=initializing}, 0}.
+    {Port, ClusterName, Timeout, Interval} = config(),    
+    {ok, B} = rbeacon:new(Port, [active, noecho]),
+    rbeacon:set_interval(B, Interval),
+    Ann = encode({ClusterName, node()}),
+    rbeacon:subscribe(B, <<>>), 
+    rbeacon:publish(B, Ann),
+    {ok, active, #data{beacon=B, cluster=ClusterName}, Timeout}.
 
-handle_info(timeout, Data) ->
-    Data2 = contact(Data),
-    {noreply, Data2}.
+active(timeout, _, #data{beacon=B}=Data) ->
+    log({active, timeout, nodes(), going_passive}),
+    rbeacon:silence(B),
+    {next_state, passive, Data};
 
-handle_call(status, _, Data) ->
-    Data2 = contact(Data),
-    {reply, to_map(Data2), Data2}.
-
-handle_cast(_, Data) ->
-  {noreply, Data}.
-
-terminate(_Reason, _Data) ->
-  ok.
-
-code_change(_OldVsn, Data, _Extra) ->
-  {ok, Data}.
-
-contact(Data) ->
-    case nkswarm_config:contact() of
-        [] -> 
-            Data#data{status=green, 
-                      replied=[], 
-                      contacted=[], 
-                      nodes=all_nodes(),
-                      last_checked=millis()};
-        Nodes -> 
-            Timeout = nkswarm_config:timeout(),
-            contact([N || N <- Nodes, N =/= node()], Timeout, Data)
-    end.
-
-contact(Nodes, Timeout, Data) ->
-    Answering = [N || N <- Nodes, net_adm:ping(N) =:= pong],
-    case Answering of
-        [] -> 
-            Data#data{status=red, 
-                      replied=Answering, 
-                      contacted=Nodes, 
-                      nodes=all_nodes(),
-                      last_checked=millis()};
+active(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
+    case decode(Msg) of
+        {C, Peer} ->
+            case net_adm:ping(Peer) of
+                pong -> 
+                    log({active, discovered, Peer, going_passive}),
+                    rbeacon:silence(B),
+                    {next_state, passive, Data};
+                _ ->
+                    log({active, could_not_ping, Peer, staying_active}),
+                    {next_state, active, Data}
+            end;
         _ -> 
-            wait_for_nodes(Answering, Nodes, Timeout, Data)
+            {next_state, active, Data}
     end.
 
-wait_for_nodes(Answering, Nodes, WaitTime, Data) ->
-    Slices = 10,
-    SliceTime = round(WaitTime/Slices),
-    wait_for_nodes(Answering, Nodes, SliceTime, Slices, Data).
-
-wait_for_nodes(Answering, Nodes, _SliceTime, 0, Data) ->
-    Data#data{status=yellow, 
-              replied=Answering, 
-              contacted=Nodes,
-              nodes=all_nodes(),
-              last_checked=millis()};
-
-wait_for_nodes(Answering, Nodes, SliceTime, Iterations, Data) -> 
-    case length(nodes()) >= length(Answering) of
-        true -> 
-            Data#data{status=green, 
-                      replied=Answering, 
-                      contacted=Nodes, 
-                      nodes=all_nodes(),
-                      last_checked=millis()};
-        false ->
-            timer:sleep(SliceTime),
-            wait_for_nodes(Answering, Nodes, SliceTime, Iterations - 1, Data)
+passive(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
+    case decode(Msg) of
+        {C, Peer} ->
+            case net_adm:ping(Peer) of
+                pong -> 
+                    log({passive, discovered, Peer, staying_passive}),
+                    rbeacon:silence(B),
+                    {next_state, passive, Data};
+                _ ->
+                    log({passive, could_not_ping, Peer, staying_passive}),
+                    {next_state, active, Data}
+            end;
+        _ -> 
+            {next_state, active, Data}
     end.
 
+terminate(Reason, _, #data{beacon=B}) ->
+    log({terminated, Reason}),
+    rbeacon:close(B),
+    ok.
 
-all_nodes() -> [node()|nodes()].
+encode(Term) ->
+    erlang:term_to_binary(Term).
 
-millis() ->
-    erlang:system_time(millisecond).
+decode(Bin) ->
+    erlang:binary_to_term(Bin).
 
-to_map(#data{status=Status, replied=Replied, contacted=Contacted, nodes=Nodes, last_checked=Checked}) ->
-    #{ status => Status, 
-       replied => Replied,
-       contacted => Contacted, 
-       nodes => Nodes, 
-       last_checked => Checked }.
+log(Term) ->
+    io:format("[nkswarm] ~p~n", [Term]).
