@@ -86,4 +86,4 @@ log(Term) ->
     io:format("[nkswarm] ~p~n", [Term]).
 
 status() ->
-    #{ nodes => [node(), nodes()] }.
+    #{ nodes => [node() | nodes()] }.
