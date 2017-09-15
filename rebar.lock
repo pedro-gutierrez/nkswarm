@@ -1,0 +1,4 @@
+[{<<"rbeacon">>,
+  {git,"https://github.com/pedro-gutierrez/rbeacon.git",
+       {ref,"e0bbd58d8269a9093e401c1c2081108e6eb0bca7"}},
+  0}].

@@ -26,9 +26,10 @@ init([]) ->
     Ann = encode({ClusterName, node()}),
     rbeacon:subscribe(B, <<>>), 
     rbeacon:publish(B, Ann),
-    {ok, active, #data{beacon=B, cluster=ClusterName}, Timeout}.
+    {ok, active, #data{beacon=B, cluster=ClusterName}, 
+        [{{timeout,go_passive},Timeout,active}] }.
 
-active(timeout, _, #data{beacon=B}=Data) ->
+active({timeout, go_passive}, _, #data{beacon=B}=Data) ->
     log({active, timeout, nodes(), going_passive}),
     rbeacon:silence(B),
     {next_state, passive, Data};
@@ -50,7 +51,7 @@ active(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
     end;
 
 active({call, From}, status, Data) ->
-    {keep_state, Data, {reply, From, status()}}.
+    {keep_state, Data, {reply, From, status(active)}}.
 
 passive(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
     case decode(Msg) of
@@ -69,7 +70,7 @@ passive(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
     end;
 
 passive({call, From}, status, Data) ->
-    {keep_state, Data, {reply, From, status()}}.
+    {keep_state, Data, {reply, From, status(passive)}}.
 
 terminate(Reason, _, #data{beacon=B}) ->
     log({terminated, Reason}),
@@ -83,7 +84,7 @@ decode(Bin) ->
     erlang:binary_to_term(Bin).
 
 log(Term) ->
-    io:format("[nkswarm] ~p~n", [Term]).
+    error_logger:info_msg("[nkswarm] ~p~n", [Term]).
 
-status() ->
-    #{ nodes => [node() | nodes()] }.
+status(S) ->
+    #{ status => S, nodes => [node() | nodes()] }.
