@@ -53,6 +53,11 @@ active(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
 active({call, From}, status, Data) ->
     {keep_state, Data, {reply, From, status(active)}}.
 
+passive({timeout, go_passive}, _, #data{beacon=B}=Data) ->
+    log({passive, timeout, nodes(), staying_passive}),
+    rbeacon:silence(B),
+    {next_state, passive, Data};
+
 passive(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
     case decode(Msg) of
         {C, Peer} ->
