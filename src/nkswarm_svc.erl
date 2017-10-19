@@ -1,6 +1,6 @@
 -module(nkswarm_svc).
 -export([start_services/1, start/0, stop/0]).
--define(SRV, nkswarm).
+-include("nkswarm.hrl").
 
 start_services(_) ->
     Spec = make_service_spec(),

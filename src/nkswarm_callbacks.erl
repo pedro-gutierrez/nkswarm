@@ -1,6 +1,6 @@
 -module(nkswarm_callbacks).
 -export([service_init/2]).
--include("nkstats.hrl").
+-include("nkswarm.hrl").
 
 service_init(SrvId, State) ->
      ?INFO("service init: ~p", [SrvId]),
