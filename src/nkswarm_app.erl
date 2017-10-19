@@ -6,7 +6,7 @@
 start(_, _) ->
     Syntax = #{
       discovery_port => {integer, 1, 65535},
-      discovery_name => atom,
+      discovery_name => string,
       beacon_timeout => integer,
       beacon_interval => integer,
       '__defaults' => #{
