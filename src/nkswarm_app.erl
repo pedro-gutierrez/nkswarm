@@ -1,6 +1,6 @@
 -module(nkswarm_app).
 -behaviour(application).
--export([start/2, stop/1]).
+-export([start/2, stop/1, get/1]).
 -define(APP, nkswarm).
 
 start(_, _) ->
@@ -30,3 +30,5 @@ start(_, _) ->
 stop(_) ->
     ok.
 
+get(Key) ->
+    nklib_config:get(?APP, Key)
