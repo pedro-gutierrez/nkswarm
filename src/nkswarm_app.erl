@@ -20,8 +20,9 @@ start(_, _) ->
         {ok, _} ->
             {ok, Pid} = nkswarm_sup:start_link(),
             {ok, Vsn} = application:get_key(?APP, vsn),
+            lager:info("NkSwarm v~s has started.", [Vsn]),
             {ok, Pid};
-        error, Error} ->
+        {error, Error} ->
             lager:error("Error parsing config: ~p", [Error]),
             error(Error)
     end.    
