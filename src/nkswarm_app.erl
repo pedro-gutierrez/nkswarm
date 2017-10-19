@@ -1,7 +1,7 @@
 -module(nkswarm_app).
 -behaviour(application).
 -export([start/2, stop/1]).
--define(APP, sipstorm_c4).
+-define(APP, nkswarm).
 
 start(_, _) ->
     Syntax = #{
