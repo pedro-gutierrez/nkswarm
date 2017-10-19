@@ -1,7 +1,7 @@
 -module(nkswarm_server).
 -export([start_link/0]).
 -export([init/1, callback_mode/0, terminate/3]).
--export([active/3, passive/3]).
+-export([stopped/3, active/3, passive/3]).
 -record(data, {beacon, cluster}).
 -define(APP, nkswarm).
 
@@ -11,14 +11,10 @@ callback_mode() ->
 start_link() ->
     gen_statem:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-config() -> 
-    { application:get_env(?APP, port, 9999),
-      application:get_env(?APP, cluster, "nkswarm"),
-      application:get_env(?APP, timeout, 1000),
-      application:get_env(?APP, interval, 300)}.
-
 init([]) ->
-    Config = config(),
+    {ok, stopped, #data{}}.
+
+stopped({enable, Config}, _, _) ->
     {Port, ClusterName, Timeout, Interval} = Config,    
     log(Config),
     {ok, B} = rbeacon:new(Port, [active, noecho, {mode, {unicast, ClusterName}}]),
@@ -26,7 +22,7 @@ init([]) ->
     Ann = encode({ClusterName, node()}),
     rbeacon:subscribe(B, <<>>), 
     rbeacon:publish(B, Ann),
-    {ok, active, #data{beacon=B, cluster=ClusterName}, 
+    {next_state, active, #data{beacon=B, cluster=ClusterName}, 
         [{{timeout,go_passive},Timeout,active}] }.
 
 active({timeout, go_passive}, _, #data{beacon=B}=Data) ->
