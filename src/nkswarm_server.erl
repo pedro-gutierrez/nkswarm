@@ -2,6 +2,7 @@
 -export([start_link/0]).
 -export([init/1, callback_mode/0, terminate/3]).
 -export([stopped/3, active/3, passive/3]).
+-export([start/1]).
 -record(data, {beacon, cluster}).
 -include("nkswarm.hrl").
 
@@ -11,11 +12,14 @@ callback_mode() ->
 start_link() ->
     gen_statem:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+start(Config) ->
+    gen_statem:call(?MODULE, {start, Config}).
+
 init([]) ->
     log({stopped, nkswarm_server}),
     {ok, stopped, #data{}}.
 
-stopped({enable, Config}, _, _) ->
+stopped({start, Config}, _, _) ->
     {Port, ClusterName, Timeout, Interval} = Config,    
     log(Config),
     {ok, B} = rbeacon:new(Port, [active, noecho, {mode, {unicast, ClusterName}}]),
