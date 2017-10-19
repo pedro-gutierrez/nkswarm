@@ -31,4 +31,4 @@ stop(_) ->
     ok.
 
 get(Key) ->
-    nklib_config:get(?APP, Key)
+    nklib_config:get(?APP, Key).
