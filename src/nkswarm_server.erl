@@ -3,7 +3,7 @@
 -export([init/1, callback_mode/0, terminate/3]).
 -export([stopped/3, active/3, passive/3]).
 -record(data, {beacon, cluster}).
--define(APP, nkswarm).
+-include("nkswarm.hrl").
 
 callback_mode() ->
     state_functions.
@@ -12,6 +12,7 @@ start_link() ->
     gen_statem:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
+    log({stopped, nkswarm_server}),
     {ok, stopped, #data{}}.
 
 stopped({enable, Config}, _, _) ->
@@ -85,7 +86,7 @@ decode(Bin) ->
     erlang:binary_to_term(Bin).
 
 log(Term) ->
-    error_logger:info_msg("[nkswarm] ~p~n", [Term]).
+    ?INFO("~p", [Term]).
 
 status(S) ->
     #{ status => S, nodes => [node() | nodes()] }.
