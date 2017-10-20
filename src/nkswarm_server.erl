@@ -62,7 +62,7 @@ active(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C, srvid=SrvId}=Data)
             {next_state, active, Data}
     end;
 
-active({call, From}, status, #{cluster=C}=Data) ->
+active({call, From}, status, #data{cluster=C}=Data) ->
     {keep_state, Data, {reply, From, status(C, active)}};
 
 active(info, {nodedown, Node}, #data{srvid=SrvId}=Data) ->
@@ -99,7 +99,7 @@ passive(info, {nodedown, Node}, #data{srvid=SrvId}=Data) ->
     publish_status(SrvId),
     {next_state, passive, Data};
 
-passive({call, From}, status, #{cluster=C}=Data) ->
+passive({call, From}, status, #data{cluster=C}=Data) ->
     {keep_state, Data, {reply, From, status(C, passive)}}.
 
 terminate(Reason, _, #data{beacon=B}) ->
