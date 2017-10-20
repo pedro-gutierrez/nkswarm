@@ -5,5 +5,5 @@
 service_init(_Spec, #{id := SrvId}=State) ->
      ?INFO("service init: ~p", [SrvId]),
      Config = SrvId:config(),
-     nkswarm_server:start(Config),
+     nkswarm_server:start(SrvId, Config),
      {ok, State}.

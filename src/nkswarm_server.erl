@@ -2,8 +2,8 @@
 -export([start_link/0]).
 -export([init/1, callback_mode/0, terminate/3]).
 -export([stopped/3, active/3, passive/3]).
--export([start/1]).
--record(data, {beacon, cluster}).
+-export([start/2]).
+-record(data, {beacon, cluster, srvid}).
 -include("nkswarm.hrl").
 
 callback_mode() ->
@@ -12,14 +12,14 @@ callback_mode() ->
 start_link() ->
     gen_statem:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-start(Config) ->
-    gen_statem:call(?MODULE, {start, Config}).
+start(SrvId, Config) ->
+    gen_statem:call(?MODULE, {start, SrvId, Config}).
 
 init([]) ->
     log({stopped, nkswarm_server}),
     {ok, stopped, #data{}}.
 
-stopped({call, From}, {start, Config}, _) ->
+stopped({call, From}, {start, SrvId, Config}, _) ->
     #{ discovery_port := Port, 
        discovery_name := ClusterName, 
        beacon_timeout := Timeout, 
@@ -30,7 +30,8 @@ stopped({call, From}, {start, Config}, _) ->
     Ann = encode({ClusterName, node()}),
     rbeacon:subscribe(B, <<>>), 
     rbeacon:publish(B, Ann),
-    {next_state, active, #data{beacon=B, cluster=ClusterName}, 
+    nkstats:register_metric(SrvId, gauge, ?NKSWARM_CLUSTER_SIZE, "Netcomposer Cluster Size"),
+    {next_state, active, #data{beacon=B, cluster=ClusterName, srvid=SrvId}, 
         [{reply, From, ok},
          {{timeout,go_passive},Timeout,active}] }.
 
@@ -39,13 +40,15 @@ active({timeout, go_passive}, _, #data{beacon=B}=Data) ->
     rbeacon:silence(B),
     {next_state, passive, Data};
 
-active(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
+active(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C, srvid=SrvId}=Data) ->
     case decode(Msg) of
         {C, Peer} ->
             case net_adm:ping(Peer) of
                 pong -> 
                     log({active, discovered, Peer, going_passive}),
                     rbeacon:silence(B),
+                    erlang:monitor_node(Peer, true),
+                    publish_status(SrvId),
                     {next_state, passive, Data};
                 _ ->
                     log({active, could_not_ping, Peer, staying_active}),
@@ -56,20 +59,28 @@ active(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
     end;
 
 active({call, From}, status, Data) ->
-    {keep_state, Data, {reply, From, status(active)}}.
+    {keep_state, Data, {reply, From, status(active)}};
+
+active(info, {nodedown, Node}, #data{srvid=SrvId}=Data) ->
+    log({nodedown, Node}),
+    publish_status(SrvId),
+    {next_state, passive, Data}.
+
 
 passive({timeout, go_passive}, _, #data{beacon=B}=Data) ->
     log({passive, timeout, nodes(), staying_passive}),
     rbeacon:silence(B),
     {next_state, passive, Data};
 
-passive(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
+passive(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C, srvid=SrvId}=Data) ->
     case decode(Msg) of
         {C, Peer} ->
             case net_adm:ping(Peer) of
                 pong -> 
                     log({passive, discovered, Peer, staying_passive}),
                     rbeacon:silence(B),
+                    erlang:monitor_node(Peer, true),
+                    publish_status(SrvId),
                     {next_state, passive, Data};
                 _ ->
                     log({passive, could_not_ping, Peer, staying_passive}),
@@ -78,6 +89,11 @@ passive(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C}=Data) ->
         _ -> 
             {next_state, active, Data}
     end;
+
+passive(info, {nodedown, Node}, #data{srvid=SrvId}=Data) ->
+    log({nodedown, Node}),
+    publish_status(SrvId),
+    {next_state, passive, Data};
 
 passive({call, From}, status, Data) ->
     {keep_state, Data, {reply, From, status(passive)}}.
@@ -96,5 +112,9 @@ decode(Bin) ->
 log(Term) ->
     ?INFO("~p", [Term]).
 
-status(S) ->
-    #{ status => S, nodes => [node() | nodes()] }.
+publish_status(SrvId) ->
+    nkstats:record_value(SrvId, gauge, ?NKSWARM_CLUSTER_SIZE, length(nodes())+1).
+
+status(Status) ->
+    #{ status => Status,
+       nodes => [node() | nodes()]}.
