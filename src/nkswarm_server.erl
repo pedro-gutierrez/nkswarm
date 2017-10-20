@@ -31,6 +31,7 @@ stopped({call, From}, {start, SrvId, Config}, _) ->
     rbeacon:subscribe(B, <<>>), 
     rbeacon:publish(B, Ann),
     nkstats:register_metric(SrvId, gauge, ?NKSWARM_CLUSTER_SIZE, "Netcomposer Cluster Size"),
+    publish_status(SrvId),
     {next_state, active, #data{beacon=B, cluster=ClusterName, srvid=SrvId}, 
         [{reply, From, ok},
          {{timeout,go_passive},Timeout,active}] }.
