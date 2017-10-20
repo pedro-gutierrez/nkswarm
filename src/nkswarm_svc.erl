@@ -21,10 +21,11 @@ stop() ->
 
 make_service_spec() ->
     #{ callback => nkswarm_callbacks,
-       plugins => [],
+       plugins => [nkstats_prometheus],
        discovery_port => nkswarm_app:get(discovery_port),
        discovery_name => nkswarm_app:get(discovery_name),
        beacon_timeout => nkswarm_app:get(beacon_timeout),
        beacon_interval => nkswarm_app:get(beacon_interval),
+       stats_exporters => nkswarm_app:get(stats_exporters),
        debug => []
      }.
