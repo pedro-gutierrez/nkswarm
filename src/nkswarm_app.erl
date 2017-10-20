@@ -9,6 +9,7 @@ start(_, _) ->
       discovery_name => string,
       beacon_timeout => integer,
       beacon_interval => integer,
+      stats_exporters => list,
       '__defaults' => #{
         discovery_port => 9999,
         beacon_timeout => 1000,
