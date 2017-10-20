@@ -2,7 +2,7 @@
 -export([start_link/0]).
 -export([init/1, callback_mode/0, terminate/3]).
 -export([stopped/3, active/3, passive/3]).
--export([start/2]).
+-export([status/0, start/2]).
 -record(data, {beacon, cluster, srvid}).
 -include("nkswarm.hrl").
 
@@ -14,6 +14,9 @@ start_link() ->
 
 start(SrvId, Config) ->
     gen_statem:call(?MODULE, {start, SrvId, Config}).
+
+status() ->
+    gen_statem:call(?MODULE, status).
 
 init([]) ->
     log({stopped, nkswarm_server}),
@@ -59,8 +62,8 @@ active(info, {rbeacon, _, Msg, _}, #data{beacon=B, cluster=C, srvid=SrvId}=Data)
             {next_state, active, Data}
     end;
 
-active({call, From}, status, Data) ->
-    {keep_state, Data, {reply, From, status(active)}};
+active({call, From}, status, #{cluster=C}=Data) ->
+    {keep_state, Data, {reply, From, status(C, active)}};
 
 active(info, {nodedown, Node}, #data{srvid=SrvId}=Data) ->
     log({nodedown, Node}),
@@ -96,8 +99,8 @@ passive(info, {nodedown, Node}, #data{srvid=SrvId}=Data) ->
     publish_status(SrvId),
     {next_state, passive, Data};
 
-passive({call, From}, status, Data) ->
-    {keep_state, Data, {reply, From, status(passive)}}.
+passive({call, From}, status, #{cluster=C}=Data) ->
+    {keep_state, Data, {reply, From, status(C, passive)}}.
 
 terminate(Reason, _, #data{beacon=B}) ->
     log({terminated, Reason}),
@@ -116,6 +119,7 @@ log(Term) ->
 publish_status(SrvId) ->
     nkstats:record_value(SrvId, gauge, ?NKSWARM_CLUSTER_SIZE, length(nodes())+1).
 
-status(Status) ->
+status(Cluster, Status) ->
     #{ status => Status,
+       cluster => Cluster,
        nodes => [node() | nodes()]}.
