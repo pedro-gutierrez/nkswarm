@@ -1,6 +1,6 @@
 {application, nkswarm,
  [{description, "Simple Erlang cluster"},
-  {vsn, "0.0.1"},
+  {vsn, "1.0.1"},
   {registered, []},
   {applications,
    [kernel,
