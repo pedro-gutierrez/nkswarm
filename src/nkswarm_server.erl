@@ -23,7 +23,7 @@ stopped({call, From}, {start, Config}, _) ->
     #{ discovery_port := Port, 
        discovery_name := ClusterName, 
        beacon_timeout := Timeout, 
-       beacon_intervale := Interval } = Config,    
+       beacon_interval := Interval } = Config,    
     log(Config),
     {ok, B} = rbeacon:new(Port, [active, noecho, {mode, {unicast, ClusterName}}]),
     rbeacon:set_interval(B, Interval),
