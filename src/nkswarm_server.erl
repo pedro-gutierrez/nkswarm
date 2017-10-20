@@ -19,7 +19,7 @@ init([]) ->
     log({stopped, nkswarm_server}),
     {ok, stopped, #data{}}.
 
-stopped({start, Config}, _, _) ->
+stopped({call, From}, {start, Config}, _) ->
     {Port, ClusterName, Timeout, Interval} = Config,    
     log(Config),
     {ok, B} = rbeacon:new(Port, [active, noecho, {mode, {unicast, ClusterName}}]),
@@ -28,7 +28,8 @@ stopped({start, Config}, _, _) ->
     rbeacon:subscribe(B, <<>>), 
     rbeacon:publish(B, Ann),
     {next_state, active, #data{beacon=B, cluster=ClusterName}, 
-        [{{timeout,go_passive},Timeout,active}] }.
+        [{reply, From, ok},
+         {{timeout,go_passive},Timeout,active}] }.
 
 active({timeout, go_passive}, _, #data{beacon=B}=Data) ->
     log({active, timeout, nodes(), going_passive}),
